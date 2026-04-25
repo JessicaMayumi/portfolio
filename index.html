@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mayumi · AI Engineer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..700,0..100,0..1&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=10" />
+</head>
+<body data-screen-label="Public Site">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="public.jsx"></script>
+
+  <script type="text/babel">
+    const APPEARANCE_KEY = "mayumi_appearance";
+    const APPEARANCE_DEFAULTS = { palette: "ash", typography: "geometric", theme: "dark" };
+
+    function applyAppearance() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || "null") || APPEARANCE_DEFAULTS;
+        document.documentElement.dataset.palette = saved.palette;
+        document.documentElement.dataset.type = saved.typography;
+        document.documentElement.dataset.theme = saved.theme;
+      } catch (e) {
+        document.documentElement.dataset.palette = APPEARANCE_DEFAULTS.palette;
+        document.documentElement.dataset.type = APPEARANCE_DEFAULTS.typography;
+        document.documentElement.dataset.theme = APPEARANCE_DEFAULTS.theme;
+      }
+    }
+
+    applyAppearance();
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "density": "spacious",
+      "motion": "vivid",
+      "ornaments": "floral"
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [tw, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+
+      React.useEffect(() => {
+        const onStorage = (e) => { if (e.key === APPEARANCE_KEY) applyAppearance(); };
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+      }, []);
+
+      // Apply feel attrs to <html>
+      React.useEffect(() => {
+        const el = document.documentElement;
+        el.dataset.density = tw.density;
+        el.dataset.motion = tw.motion;
+        el.dataset.ornaments = tw.ornaments;
+      }, [tw.density, tw.motion, tw.ornaments]);
+
+      return (
+        <>
+          <window.PublicSite tweaks={tw} />
+          <window.TweaksPanel title="Tweaks">
+            <window.TweakSection label="Densidade">
+              <window.TweakRadio
+                value={tw.density}
+                onChange={(v) => setTweak("density", v)}
+                options={[
+                  { value: "spacious", label: "Espaçosa" },
+                  { value: "compact", label: "Compacta" },
+                ]}
+              />
+            </window.TweakSection>
+            <window.TweakSection label="Movimento">
+              <window.TweakRadio
+                value={tw.motion}
+                onChange={(v) => setTweak("motion", v)}
+                options={[
+                  { value: "calm", label: "Calmo" },
+                  { value: "vivid", label: "Vivo" },
+                  { value: "intense", label: "Intenso" },
+                ]}
+              />
+            </window.TweakSection>
+            <window.TweakSection label="Ornamentos">
+              <window.TweakRadio
+                value={tw.ornaments}
+                onChange={(v) => setTweak("ornaments", v)}
+                options={[
+                  { value: "minimal", label: "Puro" },
+                  { value: "floral", label: "Florido" },
+                ]}
+              />
+            </window.TweakSection>
+          </window.TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
