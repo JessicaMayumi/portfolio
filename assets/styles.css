@@ -166,6 +166,12 @@ a, button { cursor: none; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: none; }
 
+/* Admin — usa cursor padrão do sistema */
+body.admin-page, body.admin-page a, body.admin-page button, body.admin-page * { cursor: auto; }
+body.admin-page button, body.admin-page a, body.admin-page [role="button"] { cursor: pointer; }
+body.admin-page input, body.admin-page textarea { cursor: text; }
+body.admin-page .cursor-dot, body.admin-page .cursor-ring { display: none !important; }
+
 /* Scroll progress bar */
 .scroll-progress {
   position: fixed;
@@ -213,6 +219,7 @@ button { font: inherit; color: inherit; background: none; border: none; }
 
 /* Ornaments — minimal (hides petals, flowers, marquee) */
 [data-ornaments="minimal"] .petals { display: none; }
+[data-ornaments="minimal"] .ambient { display: none; }
 [data-ornaments="minimal"] .hero-flower { display: none; }
 [data-ornaments="minimal"] .marquee { display: none; }
 [data-ornaments="minimal"] .nav-brand-flower { display: none; }
@@ -231,29 +238,29 @@ button { font: inherit; color: inherit; background: none; border: none; }
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.5;
+  opacity: 0.55;
   will-change: transform;
+  transform: translateZ(0);
 }
 .blob-1 {
-  top: -10%; right: -5%;
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
-  animation: float-1 28s ease-in-out infinite;
+  top: -20%; right: -15%;
+  width: 900px; height: 900px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+  animation: float-1 40s ease-in-out infinite;
 }
 .blob-2 {
-  bottom: -10%; left: -5%;
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
-  opacity: 0.35;
-  animation: float-2 36s ease-in-out infinite;
+  bottom: -20%; left: -15%;
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+  opacity: 0.4;
+  animation: float-2 50s ease-in-out infinite;
 }
 .blob-3 {
-  top: 40%; left: 30%;
-  width: 400px; height: 400px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 50%, transparent), transparent 70%);
-  opacity: 0.25;
-  animation: float-3 44s ease-in-out infinite;
+  top: 30%; left: 25%;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 40%, transparent) 0%, transparent 60%);
+  opacity: 0.3;
+  animation: float-3 60s ease-in-out infinite;
 }
 @keyframes float-1 {
   0%, 100% { transform: translate(0,0) scale(1); }
@@ -268,21 +275,32 @@ button { font: inherit; color: inherit; background: none; border: none; }
   50% { transform: translate(80px, 60px) scale(1.2); }
 }
 
+/* Respeitar prefers-reduced-motion — desativa animações pesadas */
+@media (prefers-reduced-motion: reduce) {
+  .blob, .petals, .marquee-track, .nav-brand-flower, .hero-flower-1, .hero-flower-2 {
+    animation: none !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Pétalas de sakura caindo */
 .petals {
   position: fixed; inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 50;
   overflow: hidden;
 }
 .petal {
   position: absolute;
-  width: 12px; height: 12px;
+  width: 10px; height: 10px;
   background: var(--accent);
   border-radius: 80% 0 80% 0;
   opacity: 0;
   animation: petal-fall linear infinite;
-  filter: drop-shadow(0 0 4px var(--accent-glow));
+  will-change: transform, opacity;
 }
 @keyframes petal-fall {
   0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; }
@@ -350,7 +368,8 @@ button { font: inherit; color: inherit; background: none; border: none; }
   gap: 4px;
   padding: 8px;
   background: color-mix(in srgb, var(--bg) 75%, transparent);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 100px;
   font-size: 13px;

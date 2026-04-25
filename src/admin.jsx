@@ -3,11 +3,18 @@ const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: us
 
 const STORAGE_KEY = "mayumi_projects";
 const GOALS_KEY = "mayumi_goals";
+const EDU_KEY = "mayumi_education";
 
 const GOAL_STATUSES = [
   { id: "proximo", label: "Próximo passo" },
   { id: "em-progresso", label: "Em progresso" },
   { id: "alcancado", label: "Alcançado ✦" },
+];
+
+const EDU_STATUSES = [
+  { id: "em-curso", label_pt: "Em curso", label_en: "Ongoing" },
+  { id: "concluido", label_pt: "Concluído", label_en: "Completed" },
+  { id: "trancado", label_pt: "Trancado", label_en: "On hold" },
 ];
 
 function readGoals() {
@@ -19,6 +26,25 @@ function writeGoals(list) {
 }
 function newGoal() {
   return { id: "g_" + Date.now(), title_pt: "", title_en: "", description_pt: "", description_en: "", tag: "", status: "proximo" };
+}
+
+function readEdu() {
+  try { return JSON.parse(localStorage.getItem(EDU_KEY) || "null"); } catch (e) { return null; }
+}
+function writeEdu(list) {
+  localStorage.setItem(EDU_KEY, JSON.stringify(list));
+  window.dispatchEvent(new StorageEvent("storage", { key: EDU_KEY }));
+}
+function newEdu() {
+  return { id: "e_" + Date.now(), degree_pt: "", degree_en: "", institution: "", period_pt: "", period_en: "", note_pt: "", note_en: "", status: "em-curso" };
+}
+function seedEdu() {
+  return [
+    { id: "e_seed1", degree_pt: "Bacharelado em Ciência da Computação", degree_en: "BSc Computer Science", institution: "FURB", period_pt: "2025 — em curso", period_en: "2025 — ongoing", note_pt: "Fase 3", note_en: "Phase 3", status: "em-curso" },
+    { id: "e_seed2", degree_pt: "Bacharelado em Ciência de Dados", degree_en: "BSc Data Science", institution: "FURB", period_pt: "2025 — em curso", period_en: "2025 — ongoing", note_pt: "Fase 1", note_en: "Phase 1", status: "em-curso" },
+    { id: "e_seed3", degree_pt: "Engenharia de Dados", degree_en: "Data Engineering", institution: "DNC", period_pt: "2024", period_en: "2024", note_pt: "Concluído", note_en: "Completed", status: "concluido" },
+    { id: "e_seed4", degree_pt: "Técnico em Tecnologia da Informação", degree_en: "IT Technical Degree", institution: "Instituto Federal Catarinense — Blumenau", period_pt: "2022 — 2024", period_en: "2022 — 2024", note_pt: "Concluído", note_en: "Completed", status: "concluido" },
+  ];
 }
 
 // Appearance manager
@@ -490,8 +516,152 @@ function GoalsManager() {
               {statusLabel[g.status]}
             </div>
             <div className="admin-row-actions">
+              <button className="icon-btn" title="Mover ↑" onClick={() => {
+                const i = goals.findIndex(x => x.id === g.id);
+                if (i <= 0) return;
+                const next = [...goals];
+                [next[i-1], next[i]] = [next[i], next[i-1]];
+                writeGoals(next); setGoals(next);
+              }}>↑</button>
+              <button className="icon-btn" title="Mover ↓" onClick={() => {
+                const i = goals.findIndex(x => x.id === g.id);
+                if (i < 0 || i >= goals.length - 1) return;
+                const next = [...goals];
+                [next[i+1], next[i]] = [next[i], next[i+1]];
+                writeGoals(next); setGoals(next);
+              }}>↓</button>
               <button className="icon-btn" onClick={() => startEdit(g)}>✎</button>
               <button className="icon-btn danger" onClick={() => removeGoal(g.id)}>×</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Education manager
+function EducationManager() {
+  const [list, setList] = useStateA(() => readEdu() || seedEdu());
+  const [editingId, setEditingId] = useStateA(null);
+  const [draft, setDraft] = useStateA(newEdu());
+  const setD = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+
+  // Persist seed on first mount if storage was empty
+  useEffectA(() => { if (!readEdu()) writeEdu(list); }, []);
+
+  const save = () => {
+    if (!draft.degree_pt.trim() && !draft.degree_en.trim()) return;
+    const next = list.find((e) => e.id === draft.id)
+      ? list.map((e) => e.id === draft.id ? draft : e)
+      : [...list, draft];
+    writeEdu(next); setList(next);
+    setDraft(newEdu()); setEditingId(null);
+  };
+
+  const remove = (id) => {
+    if (!confirm("Excluir formação?")) return;
+    const next = list.filter((e) => e.id !== id);
+    writeEdu(next); setList(next);
+  };
+
+  const startEdit = (e) => {
+    setDraft({ ...newEdu(), ...e });
+    setEditingId(e.id);
+  };
+
+  const cancelEdit = () => { setDraft(newEdu()); setEditingId(null); };
+
+  const move = (id, dir) => {
+    const i = list.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    writeEdu(next); setList(next);
+  };
+
+  const statusLabel = (s) => {
+    const m = EDU_STATUSES.find((x) => x.id === s);
+    return m ? m.label_pt : s;
+  };
+
+  return (
+    <div>
+      <h1 className="admin-h1">Formação</h1>
+      <p className="admin-sub">Gerenciar cursos, graduações e certificações. Use as setas pra reordenar.</p>
+
+      {/* Form */}
+      <div style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 12, padding: 28, marginBottom: 32 }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontStyle: "italic", marginBottom: 20 }}>
+          {editingId ? "Editar formação" : "Nova formação"}
+        </h3>
+        <div className="form-grid">
+          <div className="field">
+            <label>Curso/Diploma (PT)</label>
+            <input className="input" value={draft.degree_pt} onChange={(e) => setD("degree_pt", e.target.value)} placeholder="Ex: Bacharelado em Ciência da Computação" />
+          </div>
+          <div className="field">
+            <label>Course/Degree (EN)</label>
+            <input className="input" value={draft.degree_en} onChange={(e) => setD("degree_en", e.target.value)} placeholder="Ex: BSc Computer Science" />
+          </div>
+          <div className="field full">
+            <label>Instituição</label>
+            <input className="input" value={draft.institution} onChange={(e) => setD("institution", e.target.value)} placeholder="Ex: FURB" />
+          </div>
+          <div className="field">
+            <label>Período (PT)</label>
+            <input className="input" value={draft.period_pt} onChange={(e) => setD("period_pt", e.target.value)} placeholder="Ex: 2025 — em curso" />
+          </div>
+          <div className="field">
+            <label>Period (EN)</label>
+            <input className="input" value={draft.period_en} onChange={(e) => setD("period_en", e.target.value)} placeholder="Ex: 2025 — ongoing" />
+          </div>
+          <div className="field">
+            <label>Nota / Fase (PT)</label>
+            <input className="input" value={draft.note_pt} onChange={(e) => setD("note_pt", e.target.value)} placeholder="Ex: Fase 3, Concluído" />
+          </div>
+          <div className="field">
+            <label>Note / Phase (EN)</label>
+            <input className="input" value={draft.note_en} onChange={(e) => setD("note_en", e.target.value)} placeholder="Ex: Phase 3, Completed" />
+          </div>
+          <div className="field full">
+            <label>Status</label>
+            <div className="status-pills">
+              {EDU_STATUSES.map((s) => (
+                <button key={s.id} className={`status-pill ${draft.status === s.id ? "active" : ""}`} onClick={() => setD("status", s.id)}>
+                  {s.label_pt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="admin-toolbar" style={{ marginTop: 20 }}>
+          <button className="btn btn-primary" disabled={!draft.degree_pt?.trim() && !draft.degree_en?.trim()} onClick={save}>
+            {editingId ? "Salvar" : "+ Adicionar formação"}
+          </button>
+          {editingId && <button className="btn btn-ghost" onClick={cancelEdit}>Cancelar</button>}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="admin-list">
+        {list.length === 0 && <div className="empty-state">Nenhuma formação cadastrada.</div>}
+        {list.map((e, idx) => (
+          <div className="admin-row" key={e.id} style={{ gridTemplateColumns: "1fr auto auto" }}>
+            <div>
+              <div className="admin-row-title">{e.degree_pt || e.degree_en}</div>
+              <div className="admin-row-meta">{e.institution} · {e.period_pt || e.period_en}</div>
+              {(e.note_pt || e.note_en) && <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{e.note_pt || e.note_en}</div>}
+            </div>
+            <div className={`admin-row-status ${e.status === "concluido" ? "publicado" : e.status === "trancado" ? "rascunho" : "destaque"}`}>
+              {statusLabel(e.status)}
+            </div>
+            <div className="admin-row-actions">
+              <button className="icon-btn" title="Mover ↑" disabled={idx === 0} onClick={() => move(e.id, -1)}>↑</button>
+              <button className="icon-btn" title="Mover ↓" disabled={idx === list.length - 1} onClick={() => move(e.id, 1)}>↓</button>
+              <button className="icon-btn" onClick={() => startEdit(e)}>✎</button>
+              <button className="icon-btn danger" onClick={() => remove(e.id)}>×</button>
             </div>
           </div>
         ))}
@@ -576,6 +746,9 @@ function AdminApp() {
           <button className={`admin-nav-item ${view === "goals" ? "active" : ""}`} onClick={() => setView("goals")}>
             <span>Objetivos ✦</span>
           </button>
+          <button className={`admin-nav-item ${view === "education" ? "active" : ""}`} onClick={() => setView("education")}>
+            <span>Formação</span>
+          </button>
         </div>
 
         <div className="admin-warn">
@@ -653,6 +826,7 @@ function AdminApp() {
         {view === "appearance" && <AppearanceManager />}
         {view === "philosophy" && <PhilosophyManager />}
         {view === "goals" && <GoalsManager />}
+        {view === "education" && <EducationManager />}
 
         {(view === "new" || view === "edit") && (
           <>

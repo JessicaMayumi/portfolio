@@ -75,14 +75,19 @@ function ScrollProgress() {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
+    let raf = 0;
     const onScroll = () => {
-      const h = document.documentElement;
-      const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
-      if (el) el.style.width = p + "%";
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const h = document.documentElement;
+        const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+        if (el) el.style.width = p + "%";
+      });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
   }, []);
   return <div className="scroll-progress" ref={ref}></div>;
 }
@@ -258,7 +263,9 @@ function Timeline({ data }) {
   const [activeIdx, setActiveIdx] = useState(-1);
 
   useEffect(() => {
-    const onScroll = () => {
+    let raf = 0;
+    const compute = () => {
+      raf = 0;
       const el = ref.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -274,9 +281,10 @@ function Timeline({ data }) {
       });
       setActiveIdx(last);
     };
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(compute); };
+    window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
   }, []);
 
   return (
@@ -567,20 +575,47 @@ function Experience({ data }) {
 }
 
 // ========== Education ==========
-function Education({ data }) {
+const EDU_KEY = "mayumi_education";
+function Education({ data, lang }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(EDU_KEY);
+        if (raw) { setItems(JSON.parse(raw)); return; }
+      } catch (e) {}
+      setItems(null);
+    };
+    load();
+    window.addEventListener("storage", load);
+    return () => window.removeEventListener("storage", load);
+  }, []);
+
+  // Use localStorage data if available, else fallback to data.jsx
+  const list = items
+    ? items.map((it) => ({
+        degree: lang === "en" ? (it.degree_en || it.degree_pt) : (it.degree_pt || it.degree_en),
+        institution: it.institution,
+        period: lang === "en" ? (it.period_en || it.period_pt) : (it.period_pt || it.period_en),
+        note: lang === "en" ? (it.note_en || it.note_pt) : (it.note_pt || it.note_en),
+      }))
+    : data.items;
+
+  if (!list || list.length === 0) return null;
+
   return (
     <section className="section" id="education">
       <div className="container">
         <div className="section-kicker reveal">07 / {data.heading}</div>
         <h2 className="section-heading reveal reveal-delay-1">{data.heading}</h2>
         <div className="exp-list">
-          {data.items.map((it, i) =>
+          {list.map((it, i) =>
           <div className="exp-item reveal" key={i}>
               <div className="exp-period">{it.period}</div>
               <div>
                 <h3 className="exp-role">{it.degree}</h3>
                 <div className="exp-company">{it.institution}</div>
-                <p className="exp-note">{it.note}</p>
+                {it.note && <p className="exp-note">{it.note}</p>}
               </div>
             </div>
           )}
@@ -709,16 +744,21 @@ function SiteFooter({ lang, contactLinks }) {
 function Nav({ data, lang, setLang, sections }) {
   const [active, setActive] = useState("hero");
   useEffect(() => {
+    let raf = 0;
     const onScroll = () => {
-      let cur = "hero";
-      sections.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top < 200) cur = id;
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        let cur = "hero";
+        sections.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && el.getBoundingClientRect().top < 200) cur = id;
+        });
+        setActive(cur);
       });
-      setActive(cur);
     };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
   }, [sections]);
 
   const links = [
@@ -771,7 +811,7 @@ function PublicSite({ tweaks = {} }) {
         <div className="blob blob-2"></div>
         <div className="blob blob-3"></div>
       </div>
-      <Petals count={12} />
+      <Petals count={6} />
       <Nav data={data.nav} lang={lang} setLang={setLang} sections={["hero", "about", "timeline", "skills", "tools", "projects", "experience", "education", "contact"]} />
       <main>
         <Hero data={data.hero} lang={lang} onCta={onCta} />
@@ -784,7 +824,7 @@ function PublicSite({ tweaks = {} }) {
         <Projects data={data.projects} lang={lang} />
         <Goals lang={lang} />
         <Experience data={data.experience} />
-        <Education data={data.education} />
+        <Education data={data.education} lang={lang} />
       </main>
       <SiteFooter lang={lang} contactLinks={data.contact.links} />
     </>);
